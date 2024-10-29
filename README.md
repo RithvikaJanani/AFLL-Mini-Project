@@ -1,4 +1,4 @@
-#AFLL MINI PROJECT 
+-----------------------------AFLL MINI PROJECT-------------------------------- 
 
 This project is a simple JavaScript parser built using Python's PLY (Python Lex-Yacc) library. The parser currently supports basic JavaScript constructs, including variable declarations, array declarations, function declarations, object declarations, and while loops.
 Project Structure:
