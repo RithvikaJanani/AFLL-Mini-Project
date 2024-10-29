@@ -8,7 +8,8 @@ tokens = [
     'VAR', 'LET', 'CONST',  # JavaScript variable types
     'ID', 'ASSIGN', 'NUMBER', 'STRING', 'SEMICOLON',
     'LBRACKET', 'RBRACKET',  # Brackets for arrays
-    'COMMA'                  # Comma for array elements
+    'COMMA',                 # Comma for array elements
+    'TRUE', 'FALSE', 'NULL'  # Boolean and null values
 ]
 
 # Token definitions for variable types in JavaScript
@@ -30,21 +31,40 @@ t_LBRACKET = r'\['
 t_RBRACKET = r'\]'
 t_COMMA = r','
 
-# Regular expression for identifiers (variable names)
-def t_ID(t):
-    r'[a-zA-Z_][a-zA-Z0-9_]*'
-    return t
-
 # Token for number literals
 def t_NUMBER(t):
-    r'\d+'
-    t.value = int(t.value)
+    r'\d+(\.\d+)?'  # Allow for integers and floating point numbers
+    if '.' in t.value:
+        t.value = float(t.value)  # Convert to float if it has a decimal
+    else:
+        t.value = int(t.value)  # Convert to int if it's an integer
     return t
 
 # Token for string literals (single or double quotes)
 def t_STRING(t):
     r'\"([^\\\n]|(\\.))*?\"|\'.*?\''
     t.value = t.value[1:-1]  # Remove the quotes around the string
+    return t
+
+# Tokens for boolean values and null
+def t_TRUE(t):
+    r'true'
+    t.value = True
+    return t
+
+def t_FALSE(t):
+    r'false'
+    t.value = False
+    return t
+
+def t_NULL(t):
+    r'null'
+    t.value = None
+    return t
+
+# Regular expression for identifiers (variable names)
+def t_ID(t):
+    r'[a-zA-Z_][a-zA-Z0-9_]*'
     return t
 
 # Ignoring spaces and tabs
@@ -86,11 +106,15 @@ def p_array_elements(p):
     else:  # Single element in array
         p[0] = [p[1]]
 
-# Rule for an array element which can be either a number or a string
+# Rule for an array element which can be a number, string, boolean, null, or another array
 def p_element(p):
     '''element : NUMBER
-               | STRING'''
-    p[0] = p[1]
+               | STRING
+               | TRUE
+               | FALSE
+               | NULL
+               | array'''  # Allow nested arrays
+    p[0] = p[1]  # Assign the parsed value to p[0]
 
 # Error rule for syntax errors
 def p_error(p):
