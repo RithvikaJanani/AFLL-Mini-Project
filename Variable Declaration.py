@@ -6,7 +6,7 @@ import ply.yacc as yacc
 # List of token names
 tokens = [
     'VAR', 'LET', 'CONST',  # JavaScript variable types
-    'ID', 'ASSIGN', 'NUMBER', 'STRING', 'SEMICOLON'
+    'ID', 'ASSIGN', 'NUMBER', 'STRING', 'BOOLEAN', 'SEMICOLON'
 ]
 
 # Token definitions for variable types in JavaScript
@@ -25,21 +25,26 @@ def t_CONST(t):
 t_ASSIGN = r'='
 t_SEMICOLON = r';'
 
+# Token for boolean literals
+def t_BOOLEAN(t):
+    r'true|false'
+    t.value = True if t.value == "true" else False
+    return t
+
 # Regular expression for identifiers (variable names)
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z0-9_]*'
     return t
 
-# Token for number literals
+# Token for number literals (including integers and decimals)
 def t_NUMBER(t):
-    r'\d+'
-    t.value = int(t.value)
+    r'\d+(\.\d+)?'  # Allows for integers and decimal numbers
+    t.value = float(t.value) if '.' in t.value else int(t.value)
     return t
 
 # Token for string literals (single and double quotes)
 def t_STRING(t):
     r'\".*?\"|\'(.*?)\''
-    # The value is extracted depending on which quote was used
     t.value = t.value[1:-1]  # Strip the quotes
     return t
 
@@ -66,7 +71,10 @@ def p_var_declaration(p):
                        | CONST ID ASSIGN NUMBER SEMICOLON
                        | VAR ID ASSIGN STRING SEMICOLON
                        | LET ID ASSIGN STRING SEMICOLON
-                       | CONST ID ASSIGN STRING SEMICOLON'''
+                       | CONST ID ASSIGN STRING SEMICOLON
+                       | VAR ID ASSIGN BOOLEAN SEMICOLON
+                       | LET ID ASSIGN BOOLEAN SEMICOLON
+                       | CONST ID ASSIGN BOOLEAN SEMICOLON'''
     
     if len(p) == 6:  # TYPE ID = VALUE SEMICOLON
         print(f"Parsed variable declaration: {p[1]} {p[2]} = {p[4]}")
@@ -78,7 +86,7 @@ def p_error(p):
     if p is None:
         print("Syntax error at EOF")
     else:
-        print(f"Syntax error at '{p.value}'")
+        print(f"Syntax error at '{p.value}' (Line {p.lineno})")
 
 # Build the parser
 parser = yacc.yacc()
