@@ -7,7 +7,7 @@ import ply.yacc as yacc
 tokens = [
     'WHILE', 'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE',
     'ID', 'COMPARISON', 'NUMBER', 'SEMICOLON', 'ASSIGN',
-    'PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE'
+    'PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE', 'AND', 'OR'
 ]
 
 # Token definitions
@@ -25,6 +25,8 @@ t_PLUS = r'\+'  # Define the PLUS token
 t_MINUS = r'-'   # Define the MINUS token
 t_MULTIPLY = r'\*'  # Define the MULTIPLY token
 t_DIVIDE = r'/'  # Define the DIVIDE token
+t_AND = r'&&'  # Logical AND
+t_OR = r'\|\|'  # Logical OR
 
 # Regular expression for identifiers (variable names)
 def t_ID(t):
@@ -45,6 +47,11 @@ def t_NUMBER(t):
 # Ignoring spaces and tabs
 t_ignore = ' \t'
 
+# Newline handling to avoid illegal character errors
+def t_newline(t):
+    r'\n+'
+    pass  # Ignore newlines
+
 # Error handling rule
 def t_error(t):
     print(f"Illegal character '{t.value[0]}'")
@@ -57,12 +64,22 @@ lexer = lex.lex()
 
 # Parsing rules for while loop
 def p_while_loop(p):
-    '''while_loop : WHILE LPAREN comparison RPAREN LBRACE statements RBRACE'''
+    '''while_loop : WHILE LPAREN condition RPAREN LBRACE statements RBRACE'''
     print(f"Parsed while loop: while ({p[3]}) {{ {p[6]} }}")
+
+def p_condition(p):
+    '''condition : condition AND condition
+                 | condition OR condition
+                 | comparison'''
+    if len(p) == 4:  # AND or OR condition
+        p[0] = f"{p[1]} {p[2]} {p[3]}"
+    else:  # Just a comparison
+        p[0] = p[1]
 
 def p_comparison(p):
     '''comparison : ID COMPARISON NUMBER
-                  | ID COMPARISON ID'''
+                  | ID COMPARISON ID
+                  | expression COMPARISON expression'''
     p[0] = f"{p[1]} {p[2]} {p[3]}"
 
 def p_statements(p):
@@ -70,7 +87,7 @@ def p_statements(p):
                   | statement
                   | empty'''  # Allow for an empty block
     if len(p) == 3:  # More than one statement
-        p[0] = p[1] + ' ' + p[2]
+        p[0] = p[1] + ' ' + p[2]  # Ensure space between statements
     elif len(p) == 2:  # Single statement
         p[0] = p[1]
     else:  # Empty block
@@ -80,9 +97,9 @@ def p_statement(p):
     '''statement : ID ASSIGN expression SEMICOLON
                  | ID SEMICOLON'''
     if len(p) == 5:  # ID = expression;
-        p[0] = f"{p[1]} = {p[3]}"
+        p[0] = f"{p[1]} = {p[3]};"  # Add semicolon
     else:  # ID;
-        p[0] = f"{p[1]}"
+        p[0] = f"{p[1]};"  # Add semicolon
 
 def p_expression(p):
     '''expression : expression PLUS term
@@ -112,7 +129,7 @@ def p_error(p):
     if p is None:
         print("Syntax error at EOF")
     else:
-        print(f"Syntax error at '{p[1]}'")  # Fix this to print the first value
+        print(f"Syntax error at '{p.value}'")  # Access the token's value directly
 
 # Define empty production
 def p_empty(p):
