@@ -67,11 +67,14 @@ def p_comparison(p):
 
 def p_statements(p):
     '''statements : statements statement
-                  | statement'''
+                  | statement
+                  | empty'''  # Allow for an empty block
     if len(p) == 3:  # More than one statement
         p[0] = p[1] + ' ' + p[2]
-    else:  # Single statement
+    elif len(p) == 2:  # Single statement
         p[0] = p[1]
+    else:  # Empty block
+        p[0] = ''
 
 def p_statement(p):
     '''statement : ID ASSIGN expression SEMICOLON
@@ -109,7 +112,12 @@ def p_error(p):
     if p is None:
         print("Syntax error at EOF")
     else:
-        print(f"Syntax error at '{p.value}'")
+        print(f"Syntax error at '{p[1]}'")  # Fix this to print the first value
+
+# Define empty production
+def p_empty(p):
+    'empty :'
+    pass
 
 # Build the parser
 parser = yacc.yacc()
