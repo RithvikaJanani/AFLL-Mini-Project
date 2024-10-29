@@ -5,13 +5,16 @@ import ply.yacc as yacc
 
 # List of token names
 tokens = [
-    'VAR', 'LET', 'CONST',  # JavaScript variable types
-    'ID', 'ASSIGN', 'NUMBER', 'STRING', 'SEMICOLON',
-    'LBRACE', 'RBRACE',  # Braces for objects
-    'COLON', 'COMMA'     # Colon for key-value pairs and comma for elements
+    'VAR', 'LET', 'CONST',        # JavaScript variable types
+    'ID', 'ASSIGN', 'NUMBER',     # Identifiers and assignment
+    'STRING', 'TRUE', 'FALSE',    # String, Boolean values
+    'NULL', 'SEMICOLON',          # Null and semicolon
+    'LBRACE', 'RBRACE',           # Braces for objects
+    'LBRACKET', 'RBRACKET',       # Brackets for arrays
+    'COLON', 'COMMA'              # Colon for key-value pairs and comma for elements
 ]
 
-# Token definitions for variable types in JavaScript
+# Token definitions for JavaScript keywords and symbols
 def t_VAR(t):
     r'var'
     return t
@@ -24,10 +27,28 @@ def t_CONST(t):
     r'const'
     return t
 
+# Tokens for Boolean values and null
+def t_TRUE(t):
+    r'true'
+    t.value = True
+    return t
+
+def t_FALSE(t):
+    r'false'
+    t.value = False
+    return t
+
+def t_NULL(t):
+    r'null'
+    t.value = None
+    return t
+
 t_ASSIGN = r'='
 t_SEMICOLON = r';'
 t_LBRACE = r'\{'
 t_RBRACE = r'\}'
+t_LBRACKET = r'\['
+t_RBRACKET = r'\]'
 t_COLON = r':'
 t_COMMA = r','
 
@@ -38,8 +59,8 @@ def t_ID(t):
 
 # Token for number literals
 def t_NUMBER(t):
-    r'\d+'
-    t.value = int(t.value)
+    r'\d+(\.\d+)?'
+    t.value = float(t.value) if '.' in t.value else int(t.value)
     return t
 
 # Token for string literals (single or double quotes)
@@ -73,29 +94,52 @@ def p_object(p):
     '''object : LBRACE object_properties RBRACE
               | LBRACE RBRACE'''
     
-    if len(p) == 4:  # Format: { properties }
+    if len(p) == 4:  # Object with properties
         p[0] = p[2]
-    else:  # Empty object: {}
+    else:  # Empty object
         p[0] = {}
 
 def p_object_properties(p):
-    '''object_properties : object_properties COMMA property
-                         | property'''
+    '''object_properties : object_properties COMMA key_value
+                         | key_value'''
     
-    if len(p) == 4:  # Multiple properties in object
-        p[0] = p[1]  # Keep existing properties
-        p[0][p[3][0]] = p[3][1]  # Add new property (key-value)
-    else:  # Single property in object
-        p[0] = {p[1][0]: p[1][1]}  # Create new mapping
+    if len(p) == 4:  # Multiple key-value pairs
+        p[0] = {**p[1], **p[3]}
+    else:  # Single key-value pair
+        p[0] = p[1]
 
-def p_property(p):
-    '''property : ID COLON value'''
-    p[0] = (p[1], p[3])  # Tuple of (key, value)
+def p_key_value(p):
+    '''key_value : ID COLON value
+                 | NUMBER COLON value'''  # Allow NUMBER as key
+    p[0] = {p[1]: p[3]}
 
 def p_value(p):
     '''value : NUMBER
-             | STRING'''
+             | STRING
+             | TRUE
+             | FALSE
+             | NULL
+             | object
+             | array'''
     p[0] = p[1]
+
+def p_array(p):
+    '''array : LBRACKET array_elements RBRACKET
+             | LBRACKET RBRACKET'''
+    
+    if len(p) == 4:  # Array with elements
+        p[0] = p[2]
+    else:  # Empty array
+        p[0] = []
+
+def p_array_elements(p):
+    '''array_elements : array_elements COMMA value
+                      | value'''
+    
+    if len(p) == 4:  # Multiple elements in array
+        p[0] = p[1] + [p[3]]
+    else:  # Single element in array
+        p[0] = [p[1]]
 
 # Error rule for syntax errors
 def p_error(p):
