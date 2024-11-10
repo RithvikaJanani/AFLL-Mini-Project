@@ -2,8 +2,6 @@ import ply.lex as lex
 import ply.yacc as yacc
 
 # --- Lexer (token definitions) ---
-
-# Reserved words (keywords)
 reserved = {
     'var': 'VAR',
     'let': 'LET',
@@ -11,9 +9,10 @@ reserved = {
     'while': 'WHILE',
     'if': 'IF',
     'else': 'ELSE',
+    'function': 'FUNCTION',
+    'return': 'RETURN',  # Added return to reserved
 }
 
-# Token list
 tokens = [
     'ID', 'NUMBER', 'STRING', 'ASSIGN', 'PLUS', 'MINUS', 'TIMES', 'DIVIDE',
     'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE', 'LBRACKET', 'RBRACKET', 'COMMA', 'COLON', 'SEMICOLON', 'COMPARISON',
@@ -35,7 +34,6 @@ t_COMMA = r','
 t_COLON = r':'
 t_SEMICOLON = r';'
 
-# Match keywords
 def t_VAR(t):
     r'var'
     return t
@@ -52,46 +50,48 @@ def t_WHILE(t):
     r'while'
     return t
 
-# Identifiers (variable names)
+def t_FUNCTION(t):
+    r'function'
+    return t
+
+def t_RETURN(t):
+    r'return'
+    return t
+
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z_0-9]*'
     t.type = reserved.get(t.value, 'ID')  # Check for keywords
     return t
 
-# Numbers (integers and floating-point)
 def t_NUMBER(t):
     r'\d+\.\d*|\d+(\.\d*)?'  # Updated regex to handle decimal numbers
     t.value = float(t.value)  # Convert number to float
     return t
 
-# Strings
 def t_STRING(t):
     r'"([^\\"]|\\.)*"'
     return t
 
-# Comparison operators
 def t_COMPARISON(t):
     r'==|!=|<=|>=|<|>'
     return t
 
-# Skip whitespace
 t_ignore = ' \t'
 
-# Newline handling
 def t_NEWLINE(t):
     r'\n+'
     t.lexer.lineno += len(t.value)
 
-# Error handling
 def t_error(t):
     print(f"Illegal character '{t.value[0]}'")
     t.lexer.skip(1)
 
 # --- Parser (grammar rules) ---
 
-# Grammar rules
+def p_statement_return(t):
+    'statement : RETURN expr SEMICOLON'
+    print(f'Return statement: {t[2]}')
 
-# Assignment statement
 def p_statement_var(t):
     'statement : VAR ID ASSIGN expr SEMICOLON'
     print(f'Var declaration with assignment: {t[2]} = {t[4]}')
@@ -116,7 +116,6 @@ def p_statement_expr(t):
     'statement : expr SEMICOLON'
     print(f'Expression: {t[1]}')
 
-# Expression parsing (binary operations, values, and arrays)
 def p_expr_binop(t):
     '''expr : expr PLUS expr
             | expr MINUS expr
@@ -141,12 +140,10 @@ def p_expr_parens(t):
     'expr : LPAREN expr RPAREN'
     t[0] = t[2]
 
-# Array literal (corrected expression rule)
 def p_expr_array(t):
     'expr : LBRACKET elements RBRACKET'
     t[0] = f"[{t[2]}]"
 
-# Elements inside an array (comma-separated list of expressions)
 def p_elements_single(t):
     'elements : expr'
     t[0] = f"{t[1]}"
@@ -155,12 +152,10 @@ def p_elements_multiple(t):
     'elements : expr COMMA elements'
     t[0] = f"{t[1]}, {t[3]}"
 
-# Object literal (for handling objects inside arrays)
 def p_expr_object(t):
     'expr : LBRACE object_members RBRACE'
     t[0] = f"{{{t[2]}}}"
 
-# Object members inside an object
 def p_object_members(t):
     'object_members : ID COLON expr'
     t[0] = f"{t[1]}: {t[3]}"
@@ -169,26 +164,41 @@ def p_object_members_multiple(t):
     'object_members : ID COLON expr COMMA object_members'
     t[0] = f"{t[1]}: {t[3]}, {t[5]}"
 
-# WHILE loop parsing (updated to handle body statements correctly)
 def p_statement_while(t):
     'statement : WHILE LPAREN expr RPAREN LBRACE statements RBRACE'
     print(f"While loop: while ({t[3]}) {{ {t[6]} }}")
 
-# Handle multiple statements inside braces
+# Function declaration with body
+def p_statement_function(t):
+    'statement : FUNCTION ID LPAREN params RPAREN LBRACE statements RBRACE'
+    print(f"Function declaration: function {t[2]}({', '.join(t[4])}) {{ {t[7]} }}")
+
+# Function parameters (can be empty, single, or multiple)
+def p_params_empty(t):
+    'params : '
+    t[0] = []
+
+def p_params_single(t):
+    'params : ID'
+    t[0] = [t[1]]  # Store the parameter in a list
+
+def p_params_multiple(t):
+    'params : ID COMMA params'
+    t[0] = [t[1]] + t[3]  # Append the current parameter to the list of parameters
+
+# Recursively capture statements inside the function body
 def p_statements_single(t):
     'statements : statement'
-    t[0] = t[1]
+    t[0] = f"{t[1]}"
 
 def p_statements_multiple(t):
     'statements : statement statements'
-    t[0] = f"{t[1]}; {t[2]}"
+    t[0] = f"{t[1]} {t[2]}"
 
-# Handle empty block (empty statement list)
 def p_statements_empty(t):
     'statements : '
     t[0] = ''
 
-# Error rule for syntax errors
 def p_error(t):
     if t:
         print(f"Syntax error at '{t.value}'")
@@ -196,12 +206,9 @@ def p_error(t):
         print("Syntax error at EOF")
 
 # --- Main ---
-
-# Build the lexer and parser
 lexer = lex.lex()
 parser = yacc.yacc()
 
-# Read input and process it
 def parse_js_code(code):
     lexer.input(code)
     for token in lexer:
